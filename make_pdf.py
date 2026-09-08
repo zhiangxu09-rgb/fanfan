@@ -31,24 +31,54 @@ def make_cover(text_title, text_sub, logo_path=None, out='cover.pdf'):
     lines = text_title.split('\n')
     y = 220
     for line in lines:
-        w, h = draw.textsize(line, font=font_title)
-        draw.text(((W - w) / 2, y), line, fill='black', font=font_title)
-        y += h + 10
+        # use textbbox to好 —— Action 失败的原因很明确：脚本在调用 draw.textsize(...) 时抛出 Attribute get size (compatible with newer Pillow)
+        bbox = draw.textbbox((0, 0), line, font=font_title)
+        w = bbox[2] - bbox[0]
+        h = bbox[3] - bbox[1]
+        draw.textError，意思是当前 runner 上的 Pillow/ ImageDraw 没有这个方法。(((W - w) / 2, y), line, fill='black', font=font_title)
+        y += h + 10解决办法有两种（我推荐修改代码以兼容不同 Pillow 版本）。
+
+最简单明了的修复（推荐）
+
 
     # Subtitle
-    w, h = draw.textsize(text_sub, font=font_sub)
-    draw.text(((W - w) / 2, y + 40), text_sub, fill='black', font=font_sub)
+    bbox = draw.textbbox((0, 0), text_sub, font=- 用 draw.textbbox(...)（Pillow 新版）或 font.getsize(...)（兼容旧版）来代替 drawfont_sub)
+    w = bbox[2] - bbox[0]
+    h.textsize(...)，并用 try/except 兼容两种情况。
+
+把 make_pdf.py 中 make_cover 函数的两处 textsize 调用按下面代码替换（整段可直接复制粘贴到编辑器，替换原来的 = bbox[3] - bbox[1]
+    draw.text(((W - w) / 2, y + 40), text_sub, fill='black', font=相关行）：
+
+```python
+# Title (centered)
+lines = text_title.split('\n')
+y = 220
+for line infont_sub)
 
     # Logo (optional)
-    if logo_path and os.path.exists(logo_path):
+    if logo_path and os.path.exists lines:
+    try:
+        # Pillow >= 8/9: use textbbox
+        bbox = draw.textbbox((0, 0), line, font=font_title)
+        w, h = bbox[2] - bbox[0], bbox[3] - bbox[1(logo_path):
         try:
             logo = Image.open(logo_path).convert('RGBA')
             logo.thumbnail((300, 300))
-            im.paste(logo, (int((W - logo.width) / 2), H - 420), logo)
+            im.paste(logo, (int((]
+    except AttributeError:
+        # older Pillow: fallback to font.getsize
+        w, h = font_title.getsize(line)
+    draw.text(((W - w) / 2, y), line, fill='black', font=font_title)
+    y += h + 10W - logo.width) / 2), H - 420), logo)
         except Exception:
             pass
 
-    im.save(out, 'PDF', resolution=150)
+    im.save
+
+# Subtitle
+try:
+    bbox = draw.textbbox((0, 0), text_sub, font=font_sub)
+    w, h(out, 'PDF', resolution=150)
     return out
 
 
