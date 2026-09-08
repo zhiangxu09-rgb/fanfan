@@ -1,0 +1,71 @@
+name: Generate KRS PDF
+on:
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Whether to create a GitHub Release and upload the PDF as a release asset'
+        required: false
+        default: 'false'
+      release_tag:
+        description: 'Tag for the release (if create_release=true). If empty, a tag using run number will be used.'
+        required: false
+        default: ''
+      release_name:
+        description: 'Release name (if create_release=true)'
+        required: false
+        default: 'KRS PDF'
+  push:
+    # auto-run when images or script change
+    paths:
+      - 'KRS规格书/**'
+      - 'make_pdf.py'
+      - '.github/workflows/generate_pdf.yml'
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install system dependencies (ghostscript, poppler)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ghostscript poppler-utils
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install img2pdf pillow natsort
+
+      - name: Generate PDF from KRS规格书 images
+        run: |
+          python3 make_pdf.py --cover --lang both --quality web --out fanfan_final.pdf
+
+      - name: Show generated file info
+        run: ls -lh fanfan_final.pdf || true
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fanfan_final_pdf
+          path: fanfan_final.pdf
+
+      - name: Create GitHub Release (optional)
+        if: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.create_release == 'true' || github.event.inputs.create_release == 'True') }}
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.event.inputs.release_tag || format('krs-pdf-{0}', github.run_number) }}
+          name: ${{ github.event.inputs.release_name }}
+          files: fanfan_final.pdf
+          body: Auto-generated KRS PDF by workflow run ${{ github.run_id }}
