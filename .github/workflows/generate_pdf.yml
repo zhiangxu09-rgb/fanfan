@@ -15,7 +15,6 @@ on:
         required: false
         default: 'KRS PDF'
   push:
-    # auto-run when images or script change
     paths:
       - 'KRS规格书/**'
       - 'make_pdf.py'
